@@ -5,6 +5,56 @@ from django.shortcuts import get_object_or_404
 from .models import Product, Favorite
 from .serializers import ProductSerializer, FavoriteSerializer
 
+import requests
+import json
+from django.http import StreamingHttpResponse
+
+
+from rest_framework import serializers
+
+class AIChatSerializer(serializers.Serializer):
+    prompt = serializers.CharField()
+    context = serializers.ListField(child=serializers.IntegerField(), required=False)
+
+
+class AIChatAPIView(APIView):
+    permission_classes = (permissions.AllowAny,)
+    authentication_classes = ()
+
+    def post(self, request):
+        serializer = AIChatSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        prompt = serializer.validated_data["prompt"]
+        context = serializer.validated_data.get("context", [])
+
+        def stream_response():
+            try:
+                with requests.post(
+                    "http://127.0.0.1:11434/api/generate",
+                    json={"model": "mistral", "prompt": prompt, "context": context},
+                    stream=True,  # Enable streaming
+                    timeout=10
+                ) as ai_response:
+                    ai_response.raise_for_status()
+
+                    for line in ai_response.iter_lines():
+                        if line:
+                            try:
+                                data = json.loads(line.decode("utf-8"))
+                                yield json.dumps({"response": data.get("response", ""), "done": False}) + "\n"
+                            except json.JSONDecodeError:
+                                yield json.dumps({"error": "Invalid response format", "done": False}) + "\n"
+
+                    yield json.dumps({"done": True}) + "\n"
+
+            except requests.RequestException as e:
+                yield json.dumps({"error": "Failed to communicate with AI server", "details": str(e), "done": True}) + "\n"
+
+        return StreamingHttpResponse(stream_response(), content_type="application/json")
+    
 class ProductListCreateAPIView(APIView):
     permission_classes = (permissions.AllowAny,)
     authentication_classes = ()
