@@ -13,6 +13,10 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 from pathlib import Path
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -21,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure--o+^2-knvxng9b0p=hz8g6-l-y8h15%vn7)v2luv_2#$lq_xef'
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -172,8 +176,8 @@ AWS_QUERYSTRING_AUTH = False
 
 AWS_S3_FILE_OVERWRITE = False
 
-AWS_ACCESS_KEY_ID = 'AKIA5ZZDO5KFR3BYCEGA'
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 
-AWS_SECRET_ACCESS_KEY = '7aHmEEfJEnWS6+WzdtvhI9ans19LQlunrU158dkQ'
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
-AWS_STORAGE_BUCKET_NAME = 'soft-uni-react-app'
+AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
