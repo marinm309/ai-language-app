@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Django Secrets & Configs
+.env
+*.env
+config.json
+settings_local.py
+backend/settings.py
