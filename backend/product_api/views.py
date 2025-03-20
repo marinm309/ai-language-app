@@ -12,10 +12,13 @@ from django.http import StreamingHttpResponse
 
 from rest_framework import serializers
 
+class MessageSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(choices=["user", "ai"])
+    text = serializers.CharField(allow_blank=True)
+
 class AIChatSerializer(serializers.Serializer):
     prompt = serializers.CharField()
-    context = serializers.ListField(child=serializers.IntegerField(), required=False)
-
+    context = MessageSerializer(many=True, required=False)
 
 class AIChatAPIView(APIView):
     permission_classes = (permissions.AllowAny,)
@@ -23,38 +26,50 @@ class AIChatAPIView(APIView):
 
     def post(self, request):
         serializer = AIChatSerializer(data=request.data)
-
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         prompt = serializer.validated_data["prompt"]
         context = serializer.validated_data.get("context", [])
 
-        def stream_response():
-            try:
-                with requests.post(
-                    "http://127.0.0.1:11434/api/generate",
-                    json={"model": "mistral", "prompt": prompt, "context": context},
-                    stream=True,  # Enable streaming
-                    timeout=10
-                ) as ai_response:
-                    ai_response.raise_for_status()
+        if not isinstance(context, list) or not all(isinstance(msg, dict) for msg in context):
+            return Response({"error": "Invalid context format"}, status=status.HTTP_400_BAD_REQUEST)
 
-                    for line in ai_response.iter_lines():
-                        if line:
-                            try:
-                                data = json.loads(line.decode("utf-8"))
-                                yield json.dumps({"response": data.get("response", ""), "done": False}) + "\n"
-                            except json.JSONDecodeError:
-                                yield json.dumps({"error": "Invalid response format", "done": False}) + "\n"
+        conversation_history = "\n".join([f"{msg['role'].capitalize()}: {msg['text']}" for msg in context])
+        full_prompt = f"{conversation_history}\nUser: {prompt}\nAI:"
 
-                    yield json.dumps({"done": True}) + "\n"
+        try:
+            ai_response = requests.post(
+                "http://127.0.0.1:11434/api/generate",
+                json={"model": "mistral", "prompt": full_prompt},
+                stream=True,
+                timeout=10
+            )
 
-            except requests.RequestException as e:
-                yield json.dumps({"error": "Failed to communicate with AI server", "details": str(e), "done": True}) + "\n"
+            def event_stream():
+                for line in ai_response.iter_lines():
+                    if line:
+                        decoded_line = line.decode("utf-8")
+                        try:
+                            json_data = json.loads(decoded_line)
+                            yield f"{json.dumps(json_data)}\n"
+                        except json.JSONDecodeError:
+                            yield f'{{"error": "Invalid JSON"}}\n'
 
-        return StreamingHttpResponse(stream_response(), content_type="application/json")
-    
+            updated_context = context + [{"role": "user", "text": prompt}]
+
+            return StreamingHttpResponse(
+                event_stream(), 
+                content_type="text/event-stream", 
+                headers={"X-New-Context": json.dumps(updated_context)}
+            )
+
+        except requests.RequestException as e:
+            return Response(
+                {"error": "Failed to communicate with AI server", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
 class ProductListCreateAPIView(APIView):
     permission_classes = (permissions.AllowAny,)
     authentication_classes = ()
