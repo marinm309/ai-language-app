@@ -20,7 +20,10 @@ function App() {
     if (!prompt.trim()) return;
     setLoading(true);
 
-    setMessages(prevMessages => [...prevMessages, { role: "user", text: prompt }]);
+    let tempPrompt = prompt
+    setPrompt('')
+
+    setMessages(prevMessages => [...prevMessages, { role: "user", text: tempPrompt }]);
 
     const formattedContext = context.map(msg => ({
       role: msg.role,
@@ -72,23 +75,22 @@ function App() {
 
     setContext(prevContext => [
       ...prevContext,
-      { role: "user", text: prompt },
+      { role: "user", text: tempPrompt },
       { role: "ai", text: botResponse.trim() }
     ]);
 
-    setPrompt("");
+    setPrompt('');
     setLoading(false);
   };
 
   return (
     <div>
-
       <h1>AI Chat</h1>
 
       <div className="chat-box-wrapper">
           {messages.map((msg, index) => (
-            <div className={msg.role === 'user' ? 'user-msg-wrapper' : 'ai-msg-wrapper'}>
-              <p key={index} className={msg.role === 'user' ? 'user-msg' : 'ai-msg'}>{msg.text}</p>
+            <div className={msg.role === 'user' ? 'user-msg-wrapper' : 'ai-msg-wrapper'} key={index}>
+              <p className={msg.role === 'user' ? 'user-msg' : 'ai-msg'}>{msg.text}</p>
             </div>
           ))}
       </div>
@@ -104,7 +106,7 @@ function App() {
           onInput={adjustHeight}
         />
         <button onClick={generateText} disabled={loading} className="input-box-btn">
-          {loading ? <i class="fa-solid fa-spinner"></i> : <i class="fa-solid fa-share"></i>}
+          {loading ? <i className="fa-solid fa-spinner"></i> : <i className="fa-solid fa-share"></i>}
         </button>
       </div>
 
