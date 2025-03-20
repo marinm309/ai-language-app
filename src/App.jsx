@@ -1,10 +1,20 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 function App() {
   const [prompt, setPrompt] = useState("");
   const [messages, setMessages] = useState([]);
   const [context, setContext] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const textareaRef = useRef(null);
+
+  const adjustHeight = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = "100px";
+      textarea.style.height = Math.min(textarea.scrollHeight, 300) + "px";
+    }
+  };
 
   const generateText = async () => {
     if (!prompt.trim()) return;
@@ -72,23 +82,32 @@ function App() {
 
   return (
     <div>
+
       <h1>AI Chat</h1>
-      <div style={{ maxHeight: "300px", overflowY: "auto", border: "1px solid #ddd", padding: "10px" }}>
-        {messages.map((msg, index) => (
-          <p key={index} className={msg.role === 'user' ? 'user-msg' : 'ai-msg'}>
-            <strong>{msg.role === "user" ? "You" : "AI"}:</strong> {msg.text}
-          </p>
-        ))}
+
+      <div className="chat-box-wrapper">
+          {messages.map((msg, index) => (
+            <div className={msg.role === 'user' ? 'user-msg-wrapper' : 'ai-msg-wrapper'}>
+              <p key={index} className={msg.role === 'user' ? 'user-msg' : 'ai-msg'}>{msg.text}</p>
+            </div>
+          ))}
       </div>
-      <input
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        placeholder="Type a message..."
-        disabled={loading}
-      />
-      <button onClick={generateText} disabled={loading}>
-        {loading ? "Loading..." : "Send"}
-      </button>
+
+      <div className="input-box-wrapper">
+        <textarea
+          ref={textareaRef}
+          className="input-box"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Type a message..."
+          disabled={loading}
+          onInput={adjustHeight}
+        />
+        <button onClick={generateText} disabled={loading} className="input-box-btn">
+          {loading ? <i class="fa-solid fa-spinner"></i> : <i class="fa-solid fa-share"></i>}
+        </button>
+      </div>
+
     </div>
   );
 }
